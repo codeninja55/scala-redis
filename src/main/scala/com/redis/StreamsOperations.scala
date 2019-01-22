@@ -7,6 +7,9 @@ trait StreamsOperations {self: Redis =>
   // XLEN(https://redis.io/commands/XLEN)
   //
   def xlen(name: String)(implicit format: Format): Option[Long] =
-    send("XLEN", name)(asLong)
+    send("XLEN", List(name))(asLong)
 
+  def xadd(name: String,fields : Map[String, String] , id:String="*"): Option[String] = {
+    send("XADD", name :: id :: flattenPairs(fields))(asBulk[String])
+  }
 }
