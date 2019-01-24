@@ -9,7 +9,11 @@ trait StreamsOperations {self: Redis =>
   def xlen(name: String)(implicit format: Format): Option[Long] =
     send("XLEN", List(name))(asLong)
 
-  def xadd(name: String,fields : Map[String, String] , id:String="*"): Option[String] = {
+  def xadd(name: String,fields : Map[String, String] , id:String="*")(implicit format: Format): Option[String] = {
     send("XADD", name :: id :: flattenPairs(fields))(asBulk[String])
+  }
+
+  def xrange[K,V](name: String, min:String="-", max:String="+")(implicit format: Format, parseK: Parse[K], parseV: Parse[V]): Option[Map[K, V]]= {
+    send("XRANGE", List(name , min , max))(asListPairs[K, V].map(_.flatten.toMap))
   }
 }
