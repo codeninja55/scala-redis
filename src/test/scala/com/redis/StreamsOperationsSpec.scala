@@ -32,8 +32,13 @@ class StreamsOperationsSpec extends FunSpec
 
   describe("xadd") {
     it("returns the string") {
-      r.xadd("mystream", Map("field" -> "name"))  shouldBe defined
+      val optId =r.xadd("mystream", Map("field" -> "name"))
+      optId shouldBe defined
       r.xlen("mystream") should equal(Some(1))
+      optId.map(id => {
+        r.xdel("mystream", id)
+        r.xlen("mystream") should equal(Some(0))
+      })
     }
   }
     
