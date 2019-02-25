@@ -41,5 +41,11 @@ class StreamsOperationsSpec extends FunSpec
       })
     }
   }
-    
+
+  describe("xgroup")  {
+    it("create xgroup") {
+      val aaa =r.xadd("mystream", Map("field" -> "name"))
+      val optId =r.xgroup_create("mystream", "group")
+    }
+  }
 }

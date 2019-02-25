@@ -20,4 +20,8 @@ trait StreamsOperations {self: Redis =>
   def xrange[K,V](name: String, min:String="-", max:String="+")(implicit format: Format, parseK: Parse[K], parseV: Parse[V]): Option[Map[K, V]]= {
     send("XRANGE", List(name , min , max))(asListPairs[K, V].map(_.flatten.toMap))
   }
+
+  def xgroup_create(name:String , groupname:String, id:String="$")(implicit format: Format): Option[String] = {
+    send("XGROUP", List("CREATE", name, groupname, id))(asString)
+  }
 }
