@@ -1,29 +1,17 @@
 package com.redis
 
+import com.redis.common.IntSpec
 import org.scalatest._
-import org.scalatest.junit.JUnitRunner
-import org.junit.runner.RunWith
 
 
-@RunWith(classOf[JUnitRunner])
+
 class PipelineSpec extends FunSpec
                    with Matchers
-                   with BeforeAndAfterEach
-                   with BeforeAndAfterAll
+                   with IntSpec
                    with Inside {
 
-  val r = new RedisClient("localhost", 6379)
-
-  override def beforeEach = {
-  }
-
-  override def afterEach = {
-    r.flushdb
-  }
-
-  override def afterAll = {
-    r.disconnect
-  }
+  override protected lazy val r: RedisClient =
+    new RedisClient(redisContainerHost, redisContainerPort)
 
   describe("pipeline1") {
     it("should do pipelined commands") {
@@ -37,12 +25,17 @@ class PipelineSpec extends FunSpec
 
   describe("pipeline1 with publish") {
     it("should do pipelined commands") {
-      r.pipeline { p =>
+      val res = r.pipeline { p =>
         p.set("key", "debasish")
         p.get("key")
         p.get("key1")
         p.publish("a", "debasish ghosh")
-      }.get should equal(List(true, Some("debasish"), None, Some(0)))
+      }.get
+
+      inside(res) {
+        case List(true, Some("debasish"), None, Some(_)) => succeed
+        case _ => fail
+      }
     }
   }
 
@@ -90,12 +83,13 @@ class PipelineSpec extends FunSpec
       p.get("key1")
     }.get
 
-    inside(res) { case List(true, Some(_), Some("debasish"), Some(_), None) => }
+    inside(res) {
+      case List(true, Some(_), Some("debasish"), Some(_), None) => succeed
+      case _ => fail
+    }
   }
 
-  import scala.concurrent.ExecutionContext.Implicits.global
-  import scala.concurrent.{Await, Future}
-  import scala.util.Success
+  import scala.concurrent.Await
   import scala.concurrent.duration._
 
   describe("pipeline no multi 1") {

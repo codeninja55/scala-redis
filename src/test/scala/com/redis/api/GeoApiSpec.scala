@@ -1,32 +1,23 @@
-package com.redis
-import org.scalatest.FunSpec
-import org.scalatest.BeforeAndAfterEach
-import org.scalatest.BeforeAndAfterAll
-import org.scalatest.Matchers
-import org.scalatest.junit.JUnitRunner
-import org.junit.runner.RunWith
+package com.redis.api
 
-/**
-  * Created by alexis on 05/09/16.
-  */
-class GeoOperationsSpec extends FunSpec
+import com.redis.GeoRadiusMember
+import com.redis.common.IntSpec
+import org.scalatest.{FunSpec, Matchers}
+
+trait GeoApiSpec extends FunSpec
   with Matchers
-  with BeforeAndAfterEach
-  with BeforeAndAfterAll {
+  with IntSpec {
 
-  val r = new RedisClient("localhost", 6379)
+  override protected def r: BaseApi with StringApi with GeoApi with AutoCloseable
 
-  override def beforeEach = {
-  }
+  geoadd()
+  geopos()
+  geohash()
+  geodist()
+  georadius()
+  georadiusbymember()
 
-  override def afterEach = {
-    r.flushdb
-  }
-
-  override def afterAll = {
-    r.disconnect
-  }
-
+  protected def geoadd(): Unit = {
   describe("geoadd") {
     it("should add values with their coordinates and return the added quantity") {
       val out = r.geoadd("Sicily", Seq(("13.361389", "38.115556", "Palermo"), ("15.087269", "37.502669", "Catania")))
@@ -38,7 +29,9 @@ class GeoOperationsSpec extends FunSpec
       out should  be(Some(0))
     }
   }
+  }
 
+  protected def geopos(): Unit = {
   describe("geopos") {
     it("should correctly expose coordinates of requested members"){
       r.geoadd("Sicily", Seq(("13.361389", "38.115556", "Palermo"), ("15.087269", "37.502669", "Catania")))
@@ -61,7 +54,9 @@ class GeoOperationsSpec extends FunSpec
       )
     }
   }
+  }
 
+  protected def geohash(): Unit = {
   describe("geohash") {
     it("should expose correctly the stored hash"){
       r.geoadd("Sicily", Seq(("13.361389", "38.115556", "Palermo"), ("15.087269", "37.502669", "Catania")))
@@ -74,7 +69,9 @@ class GeoOperationsSpec extends FunSpec
       out should be(Some(List(None)))
     }
   }
+  }
 
+  protected def geodist(): Unit = {
   describe("geodist"){
     it("should correctly compute the distance between two objects, defaulting to meters"){
       r.geoadd("Sicily", Seq(("13.361389", "38.115556", "Palermo"), ("15.087269", "37.502669", "Catania")))
@@ -94,7 +91,9 @@ class GeoOperationsSpec extends FunSpec
       out.isDefined should be(false)
     }
   }
+  }
 
+  protected def georadius(): Unit = {
   describe("georadius"){
     it("should correctly retrieve members in the radius with their hash and dist"){
       r.geoadd("Sicily", Seq(("13.361389", "38.115556", "Palermo"), ("15.087269", "37.502669", "Catania")))
@@ -154,6 +153,9 @@ class GeoOperationsSpec extends FunSpec
       )
     }
   }
+  }
+
+  protected def georadiusbymember(): Unit = {
   describe("georadiusbymember"){
     it("should correctly retrieve members in the radius with their hash and dist"){
       r.geoadd("Sicily", Seq(("13.361389", "38.115556", "Palermo"), ("15.087269", "37.502669", "Catania"), ("13.583333", "37.316667", "Agrigento")))
@@ -202,5 +204,6 @@ class GeoOperationsSpec extends FunSpec
       act.size should equal(1)
       act should contain(Some(GeoRadiusMember(Some("Agrigento"),None,None,None)))
     }
+  }
   }
 }

@@ -1,25 +1,18 @@
 package com.redis
 
-import org.scalatest.FunSpec
-import org.scalatest.BeforeAndAfterEach
-import org.scalatest.BeforeAndAfterAll
-import org.scalatest.Matchers
-import org.scalatest.junit.JUnitRunner
-import org.junit.runner.RunWith
+import com.redis.common.RedisDocker
+import org.scalatest.{FunSpec, Matchers}
 
-
-@RunWith(classOf[JUnitRunner])
-class PubSubSpec extends FunSpec 
+class PubSubSpec extends FunSpec
                  with Matchers
-                 with BeforeAndAfterEach
-                 with BeforeAndAfterAll {
+                 with RedisDocker {
 
-  val r = new RedisClient("localhost", 6379)
-  val t = new RedisClient("localhost", 6379)
+  lazy val r = new RedisClient(redisContainerHost, redisContainerPort)
+  lazy val t = new RedisClient(redisContainerHost, redisContainerPort)
 
-  override def afterAll = {
-    // r.disconnect
-    // t.disconnect
+  override def afterAll(): Unit = {
+     r.close()
+     t.close()
   }
 
   /**
@@ -32,56 +25,46 @@ class PubSubSpec extends FunSpec
    * <i>redis-cli publish b "exit":</i> This will do an unsubscribe all
    */
   describe("pubsub") {
-    it("should do a pubsub protocol") {
-      r.subscribe("a", "b") { pubsub =>
-        pubsub match {
+    // todo: this is not a test!
+    ignore("should do a pubsub protocol") {
+      r.subscribe("a", "b") {
           case S(channel, no) => println("subscribed to " + channel + " and count = " + no)
           case U(channel, no) => println("unsubscribed from " + channel + " and count = " + no)
           case E(exception) => println("Fatal error caused consumer dead. Please init new consumer reconnecting to master or connect to backup")
-          
-          case M(channel, msg) => 
+
+          case M(channel, msg) =>
             msg match {
               // exit will unsubscribe from all channels and stop subscription service
-              case "exit" => 
+              case "exit" =>
                 println("unsubscribe all ..")
                 r.unsubscribe
 
               // message "+x" will subscribe to channel x
-              case x if x startsWith "+" => 
+              case x if x startsWith "+" =>
                 val s: Seq[Char] = x
                 s match {
                   case Seq('+', rest @ _*) => r.subscribe(rest.toString){ m => }
                 }
 
               // message "-x" will unsubscribe from channel x
-              case x if x startsWith "-" => 
+              case x if x startsWith "-" =>
                 val s: Seq[Char] = x
                 s match {
                   case Seq('-', rest @ _*) => r.unsubscribe(rest.toString)
                 }
 
               // other message receive
-              case x => 
+              case x =>
                 println("received message on channel " + channel + " as : " + x)
             }
-        }
       }
     }
 
     it("should publish without breaking the other commands afterwards") {
       t.set("key", "value")
-
-      t.get("key") match {
-        case Some(s: String) => s should equal("value")
-        case None => fail("should return value")
-      }
-
+      t.get("key").get should equal("value")
       t.publish("a", "message")
-
-      t.get("key") match {
-        case Some(s: String) => s should equal("value")
-        case None => fail("should return value")
-      }
+      t.get("key").get should equal("value")
     }
   }
 }

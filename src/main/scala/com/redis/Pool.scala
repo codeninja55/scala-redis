@@ -4,7 +4,6 @@ import java.util.concurrent.TimeUnit
 
 import org.apache.commons.pool2._
 import org.apache.commons.pool2.impl._
-import com.redis.cluster.ClusterNode
 
 private [redis] class RedisClientFactory(val host: String, val port: Int, val database: Int = 0, val secret: Option[Any] = None, val timeout : Int = 0)
   extends PooledObjectFactory[RedisClient] {
@@ -33,8 +32,16 @@ object RedisClientPool {
   val UNLIMITED_CONNECTIONS: Int = -1
 }
 
-class RedisClientPool(val host: String, val port: Int, val maxIdle: Int = 8, val database: Int = 0, val secret: Option[Any] = None, val timeout : Int = 0,
-                      val maxConnections: Int = RedisClientPool.UNLIMITED_CONNECTIONS, val poolWaitTimeout: Long = 3000) {
+class RedisClientPool(
+                       val host: String,
+                       val port: Int,
+                       val maxIdle: Int = 8,
+                       val database: Int = 0,
+                       val secret: Option[Any] = None,
+                       val timeout: Int = 0,
+                       val maxConnections: Int = RedisClientPool.UNLIMITED_CONNECTIONS,
+                       val poolWaitTimeout: Long = 3000
+                     ) {
 
   val objectPoolConfig = new GenericObjectPoolConfig[RedisClient]
   objectPoolConfig.setMaxIdle(maxIdle)
@@ -58,14 +65,6 @@ class RedisClientPool(val host: String, val port: Int, val maxIdle: Int = 8, val
   }
 
   // close pool & free resources
-  def close: Unit = pool.close()
+  def close(): Unit = pool.close()
 }
 
-/**
-  *
-  * @param node
-  */
-class IdentifiableRedisClientPool(val node: ClusterNode)
-  extends RedisClientPool (node.host, node.port, node.maxIdle, node.database, node.secret,node.timeout){
-  override def toString: String = node.nodename
-}

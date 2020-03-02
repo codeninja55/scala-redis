@@ -1,32 +1,41 @@
-package com.redis
+package com.redis.api
 
-import org.scalatest.FunSpec
-import org.scalatest.BeforeAndAfterEach
-import org.scalatest.BeforeAndAfterAll
-import org.scalatest.Matchers
-import org.scalatest.junit.JUnitRunner
-import org.junit.runner.RunWith
+import com.redis.RedisClient
+import com.redis.common.IntSpec
+import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.{BeforeAndAfterEach, FunSpec, Matchers}
+
+import scala.concurrent.Future
 
 
-@RunWith(classOf[JUnitRunner])
-class ListOperationsSpec extends FunSpec 
-                         with Matchers
-                         with BeforeAndAfterEach
-                         with BeforeAndAfterAll {
+trait ListApiSpec extends FunSpec with ScalaFutures
+  with Matchers
+  with BeforeAndAfterEach
+  with IntSpec {
 
-  val r = new RedisClient("localhost", 6379)
+  override protected def r: BaseApi with StringApi with ListApi with AutoCloseable
 
-  override def beforeEach = {
-  }
+  blpop()
+  brpoplpush()
+  lindex()
+  llen()
+  lpop()
+  lpush()
+  lpushWithArrayBytes()
+  lpushWithNewlines()
+  lpushWithVariadicArguments()
+  lpushx()
+  lrange()
+  lrem()
+  lset()
+  ltrim()
+  rpop()
+  rpoplpush()
+  rpush()
+  rpushWithVariadicArguments()
+  rpushx()
 
-  override def afterEach = {
-    r.flushdb
-  }
-
-  override def afterAll = {
-    r.disconnect
-  }
-
+  protected def lpush(): Unit = {
   describe("lpush") {
     it("should add to the head of the list") {
       r.lpush("list-1", "foo") should equal(Some(1))
@@ -38,7 +47,9 @@ class ListOperationsSpec extends FunSpec
       thrown.getMessage should include("Operation against a key holding the wrong kind of value")
     }
   }
+  }
 
+  protected def lpushWithVariadicArguments(): Unit = {
   describe("lpush with variadic arguments") {
     it("should add to the head of the list") {
       r.lpush("list-1", "foo", "bar", "baz") should equal(Some(3))
@@ -46,7 +57,9 @@ class ListOperationsSpec extends FunSpec
       r.lpush("list-1", "bag", "fog") should equal(Some(7))
     }
   }
+  }
 
+  protected def lpushx(): Unit = {
   describe("lpushx") {
     it("should add to the tail of the list") {
       r.lpush("list-1", "foo") should equal(Some(1))
@@ -58,7 +71,9 @@ class ListOperationsSpec extends FunSpec
       thrown.getMessage should include("Operation against a key holding the wrong kind of value")
     }
   }
+  }
 
+  protected def rpush(): Unit = {
   describe("rpush") {
     it("should add to the tail of the list") {
       r.rpush("list-1", "foo") should equal(Some(1))
@@ -70,7 +85,9 @@ class ListOperationsSpec extends FunSpec
       thrown.getMessage should include("Operation against a key holding the wrong kind of value")
     }
   }
+  }
 
+  protected def rpushWithVariadicArguments(): Unit = {
   describe("rpush with variadic arguments") {
     it("should add to the head of the list") {
       r.rpush("list-1", "foo", "bar", "baz") should equal(Some(3))
@@ -78,7 +95,9 @@ class ListOperationsSpec extends FunSpec
       r.rpush("list-1", "bag", "fog") should equal(Some(7))
     }
   }
+  }
 
+  protected def rpushx(): Unit = {
   describe("rpushx") {
     it("should add to the tail of the list") {
       r.rpush("list-1", "foo") should equal(Some(1))
@@ -90,7 +109,9 @@ class ListOperationsSpec extends FunSpec
       thrown.getMessage should include("Operation against a key holding the wrong kind of value")
     }
   }
+  }
 
+  protected def llen(): Unit = {
   describe("llen") {
     it("should return the length of the list") {
       r.lpush("list-1", "foo") should equal(Some(1))
@@ -106,7 +127,9 @@ class ListOperationsSpec extends FunSpec
       thrown.getMessage should include("Operation against a key holding the wrong kind of value")
     }
   }
+  }
 
+  protected def lrange(): Unit = {
   describe("lrange") {
     it("should return the range") {
       r.lpush("list-1", "6") should equal(Some(1))
@@ -131,7 +154,9 @@ class ListOperationsSpec extends FunSpec
       r.lrange("list-1", 0, 7).get should equal(List(Some("1"), Some("2"), Some("3")))
     }
   }
+  }
 
+  protected def ltrim(): Unit = {
   describe("ltrim") {
     it("should trim to the input size") {
       r.lpush("list-1", "6") should equal(Some(1))
@@ -158,7 +183,9 @@ class ListOperationsSpec extends FunSpec
       r.llen("list-1") should equal(Some(3))
     }
   }
+  }
 
+  protected def lindex(): Unit = {
   describe("lindex") {
     it("should return the value at index") {
       r.lpush("list-1", "6") should equal(Some(1))
@@ -182,7 +209,9 @@ class ListOperationsSpec extends FunSpec
       r.lindex("list-1", 8) should equal(None) // the protocol says it will return empty string
     }
   }
+  }
 
+  protected def lset(): Unit = {
   describe("lset") {
     it("should set value for key at index") {
       r.lpush("list-1", "6") should equal(Some(1))
@@ -202,7 +231,9 @@ class ListOperationsSpec extends FunSpec
       thrown.getMessage should include("index out of range")
     }
   }
+  }
 
+  protected def lrem(): Unit = {
   describe("lrem") {
     it("should remove count elements matching value from beginning") {
       r.lpush("list-1", "6") should equal(Some(1))
@@ -236,7 +267,9 @@ class ListOperationsSpec extends FunSpec
       r.lindex("list-1", -2) should equal(Some("4"))
     }
   }
+  }
 
+  protected def lpop(): Unit = {
   describe("lpop") {
     it("should pop the first one from head") {
       r.lpush("list-1", "6") should equal(Some(1))
@@ -257,7 +290,9 @@ class ListOperationsSpec extends FunSpec
       r.llen("list-1") should equal(Some(2))
     }
   }
+  }
 
+  protected def rpop(): Unit = {
   describe("rpop") {
     it("should pop the first one from tail") {
       r.lpush("list-1", "6") should equal(Some(1))
@@ -278,7 +313,9 @@ class ListOperationsSpec extends FunSpec
       r.llen("list-1") should equal(Some(2))
     }
   }
+  }
 
+  protected def rpoplpush(): Unit = {
   describe("rpoplpush") {
     it("should do") {
       r.rpush("list-1", "a") should equal(Some(1))
@@ -310,7 +347,9 @@ class ListOperationsSpec extends FunSpec
       r.rpoplpush("list-1", "list-2") should equal(Some("b"))
     }
   }
+  }
 
+  protected def lpushWithNewlines(): Unit = {
   describe("lpush with newlines in strings") {
     it("should add to the head of the list") {
       r.lpush("list-1", "foo\nbar\nbaz") should equal(Some(1))
@@ -319,7 +358,9 @@ class ListOperationsSpec extends FunSpec
       r.lpop("list-1") should equal(Some("foo\nbar\nbaz"))
     }
   }
+  }
 
+  protected def brpoplpush(): Unit = {
   describe("brpoplpush") {
     it("should do") {
       r.rpush("list-1", "a") should equal(Some(1))
@@ -352,51 +393,47 @@ class ListOperationsSpec extends FunSpec
     }
 
     it("should pop blockingly") {
-      val r1 = new RedisClient("localhost", 6379)
-      class Foo extends Runnable {
-        def start (): Unit = {
-          val myThread = new Thread(this) ;
-          myThread.start() ;
-        }
+      val r1 = new RedisClient(redisContainerHost, redisContainerPort)
 
-        def run: Unit = {
-          r.brpoplpush("l1", "l2", 3) should equal(Some("a"))
-          r1.disconnect
-          r.lpop("l2") should equal(Some("a"))
-        }
+      val testVal: Future[Option[String]] = Future {
+        r1.brpoplpush("l1", "l2", 3) should equal(Some("a"))
+        r1.lpop("l2")
       }
-      (new Foo).start
-      r1.llen("l1").get should equal(0)
-      r1.lpush("l1", "a")
-      Thread.sleep(5000) // to prevent flushdb
+
+      r.llen("l1").get should equal(0)
+      r.lpush("l1", "a")
+
+      testVal.futureValue should equal(Some("a"))
+
+      r1.close()
     }
   }
+  }
 
+  protected def lpushWithArrayBytes(): Unit = {
   describe("lpush with array bytes") {
     it("should add to the head of the list") {
       r.lpush("list-1", "foo\nbar\nbaz".getBytes("UTF-8")) should equal(Some(1))
       r.lpop("list-1") should equal(Some("foo\nbar\nbaz"))
     }
   }
+  }
 
+  protected def blpop(): Unit = {
   describe("blpop") {
-    it ("should pop in a blocking mode") {
-      val r1 = new RedisClient("localhost", 6379)
-      class Foo extends Runnable {
-        def start (): Unit = {
-          val myThread = new Thread(this) ;
-          myThread.start() ;
-        }
+    it("should pop in a blocking mode") {
+      val r1 = new RedisClient(redisContainerHost, redisContainerPort)
 
-        def run: Unit = {
-          r.blpop(3, "l1", "l2") should equal(Some("l1", "a"))
-          r1.disconnect
-        }
+      val blpopV: Future[Option[(String, String)]] = Future {
+        r1.blpop(3, "l1", "l2")
       }
-      (new Foo).start
-      r1.llen("l1").get should equal(0)
-      r1.lpush("l1", "a")
-      Thread.sleep(5000) // to prevent flushdb
+      r.llen("l1").get should equal(0)
+      r.lpush("l1", "a")
+      blpopV.futureValue should equal(Some("l1", "a"))
+
+      r1.close()
     }
   }
+  }
+
 }

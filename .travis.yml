@@ -1,0 +1,9 @@
+language: scala
+dist: xenial
+scala:
+  - 2.13.0
+script:
+  - sbt +test
+jdk:
+  - openjdk8
+  - openjdk11

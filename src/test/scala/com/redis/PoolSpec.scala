@@ -1,34 +1,34 @@
 package com.redis
 
-import org.scalatest.FunSpec
-import org.scalatest.BeforeAndAfterEach
-import org.scalatest.BeforeAndAfterAll
-import org.scalatest.Matchers
-import org.scalatest.junit.JUnitRunner
-import org.junit.runner.RunWith
+import com.redis.common.RedisDocker
+import org.scalatest.{BeforeAndAfterEach, FunSpec, Matchers}
 
 import scala.concurrent._
 import scala.concurrent.duration._
-import ExecutionContext.Implicits.global
 
-@RunWith(classOf[JUnitRunner])
-class PoolSpec extends FunSpec 
+class PoolSpec extends FunSpec
                with Matchers
                with BeforeAndAfterEach
-               with BeforeAndAfterAll {
+               with RedisDocker {
 
-  implicit val clients = new RedisClientPool("localhost", 6379)
+  implicit lazy val clients: RedisClientPool = new RedisClientPool(redisContainerHost, redisContainerPort)
 
-  override def beforeEach = {
+  override protected def beforeEach(): Unit = {
+    super.beforeEach()
+    clients.port should be > 0 // initialize lazy val hack :(
   }
 
-  override def afterEach = clients.withClient{
-    client => client.flushdb
+  override def afterEach(): Unit = {
+    clients.withClient{
+      client => client.flushdb
+    }
+    super.afterEach()
   }
 
-  override def afterAll = {
+  override def afterAll(): Unit = {
     clients.withClient{ client => client.disconnect }
     clients.close
+    super.afterAll()
   }
 
   def lp(msgs: List[String]) = {
@@ -72,63 +72,55 @@ class PoolSpec extends FunSpec
     }
   }
 
-  def leftp(msgs: List[String]) = {
-    clients.withClient {
-      client => {
-        val ln = new scala.util.Random().nextString(10)
-        msgs.foreach(client.lpush(ln, _))
-        val len = client.llen(ln)
-println(len)
-        len
-      }
-    }
-  }
-
   import Bench._
+
+  private val amountMultiplier = 1 // unit test multiplier
+  // private val amountMultiplier = 1000 // benchmark multiplier
+
   describe("list load test 1") {
-    it("should distribute work amongst the clients for 400000 list operations") {
-      val (s, o, r) = listLoad(2000)
-      println("400000 list operations: elapsed = " + s + " per sec = " + o)
+    it(s"should distribute work amongst the clients for ${400 * amountMultiplier} list operations") {
+      val (s, o, r) = listLoad(2 * amountMultiplier)
+      println(s"${400 * amountMultiplier} list operations: elapsed = " + s + " per sec = " + o)
       r.size should equal(100)
     }
   }
 
   describe("list load test 2") {
-    it("should distribute work amongst the clients for 1000000 list operations") {
-      val (s, o, r) = listLoad(5000)
-      println("1000000 list operations: elapsed = " + s + " per sec = " + o)
+    it(s"should distribute work amongst the clients for ${1000 * amountMultiplier} list operations") {
+      val (s, o, r) = listLoad(5 * amountMultiplier)
+      println(s"${1000 * amountMultiplier} list operations: elapsed = " + s + " per sec = " + o)
       r.size should equal(100)
     }
   }
 
   describe("list load test 3") {
-    it("should distribute work amongst the clients for 2000000 list operations") {
-      val (s, o, r) = listLoad(10000)
-      println("2000000 list operations: elapsed = " + s + " per sec = " + o)
+    it(s"should distribute work amongst the clients for ${2000 * amountMultiplier} list operations") {
+      val (s, o, r) = listLoad(10 * amountMultiplier)
+      println(s"${2000 * amountMultiplier} list operations: elapsed = " + s + " per sec = " + o)
       r.size should equal(100)
     }
   }
 
   describe("incr load test 1") {
-    it("should distribute work amongst the clients for 400000 incr operations") {
-      val (s, o, r) = incrLoad(2000)
-      println("400000 incr operations: elapsed = " + s + " per sec = " + o)
+    it(s"should distribute work amongst the clients for ${400 * amountMultiplier} incr operations") {
+      val (s, o, r) = incrLoad(2 * amountMultiplier)
+      println(s"${400 * amountMultiplier} incr operations: elapsed = " + s + " per sec = " + o)
       r.size should equal(100)
     }
   }
 
   describe("incr load test 2") {
-    it("should distribute work amongst the clients for 1000000 incr operations") {
-      val (s, o, r) = incrLoad(5000)
-      println("1000000 incr operations: elapsed = " + s + " per sec = " + o)
+    it(s"should distribute work amongst the clients for ${1000 * amountMultiplier} incr operations") {
+      val (s, o, r) = incrLoad(5 * amountMultiplier)
+      println(s"${1000 * amountMultiplier} incr operations: elapsed = " + s + " per sec = " + o)
       r.size should equal(100)
     }
   }
 
   describe("incr load test 3") {
-    it("should distribute work amongst the clients for 2000000 incr operations") {
-      val (s, o, r) = incrLoad(10000)
-      println("2000000 incr operations: elapsed = " + s + " per sec = " + o)
+    it(s"should distribute work amongst the clients for ${2000 * amountMultiplier} incr operations") {
+      val (s, o, r) = incrLoad(10 * amountMultiplier)
+      println(s"${2000 * amountMultiplier} incr operations: elapsed = " + s + " per sec = " + o)
       r.size should equal(100)
     }
   }

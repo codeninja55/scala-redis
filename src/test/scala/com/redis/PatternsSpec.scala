@@ -1,31 +1,25 @@
 package com.redis
 
-import org.scalatest.FunSpec
-import org.scalatest.BeforeAndAfterEach
-import org.scalatest.BeforeAndAfterAll
-import org.scalatest.Matchers
-import org.scalatest.junit.JUnitRunner
-import org.junit.runner.RunWith
+import com.redis.Patterns._
+import com.redis.common.RedisDocker
+import org.scalatest.{BeforeAndAfterEach, FunSpec, Matchers}
 
-import Patterns._
-
-@RunWith(classOf[JUnitRunner])
-class PatternsSpec extends FunSpec 
+class PatternsSpec extends FunSpec
                with Matchers
                with BeforeAndAfterEach
-               with BeforeAndAfterAll {
+               with RedisDocker {
 
-  implicit val clients = new RedisClientPool("localhost", 6379)
-
-  override def beforeEach = {
-  }
+  implicit lazy val clients = new RedisClientPool(redisContainerHost, redisContainerPort)
 
   override def afterEach = clients.withClient{
     client => client.flushdb
   }
 
   override def afterAll = {
-    clients.withClient{ client => client.disconnect }
+    clients.withClient{ client =>
+      client.flushall
+      client.disconnect
+    }
     clients.close
   }
 
@@ -47,27 +41,30 @@ class PatternsSpec extends FunSpec
     println("Operations per run: " + opsPerRun * 101 + " elapsed: " + elapsed + " ops per second: " + opsPerSec)
   }
 
+  private val amountMultiplier = 1 // unit test multiplier
+  // private val amountMultiplier = 1000 // benchmark multiplier
+
   describe("scatter/gather with list test 1") {
     it("should distribute work amongst the clients") {
-      runScatterGather(2000)
+      runScatterGather(2 * amountMultiplier)
     }
   }
 
   describe("scatter/gather with list test 2") {
     it("should distribute work amongst the clients") {
-      runScatterGather(5000)
+      runScatterGather(5 * amountMultiplier)
     }
   }
 
   describe("scatter/gather with list test 3") {
     it("should distribute work amongst the clients") {
-      runScatterGather(10000)
+      runScatterGather(10 * amountMultiplier)
     }
   }
 
   describe("scatter/gather first with list test 1") {
     it("should distribute work amongst the clients") {
-      runScatterGatherFirst(5000)
+      runScatterGatherFirst(5 * amountMultiplier)
     }
   }
 }

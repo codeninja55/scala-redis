@@ -1,36 +1,49 @@
 package com.redis
 
-import java.net.URI
+import java.net.{ServerSocket, URI}
 
-import org.scalatest.FunSpec
-import org.scalatest.Matchers
-import org.scalatest.junit.JUnitRunner
-import org.junit.runner.RunWith
+import com.github.dockerjava.core.DefaultDockerClientConfig
+import com.redis.api.ApiSpec
+import com.whisk.docker.DockerContainerManager
+import com.whisk.docker.impl.dockerjava.Docker
+import org.scalatest.{FunSpec, Matchers}
 
-@RunWith(classOf[JUnitRunner])
+import scala.concurrent.Await
+import scala.concurrent.duration._
+
 class RedisClientSpec extends FunSpec
-  with Matchers {
+  with Matchers with ApiSpec {
+
+  override protected lazy val r: RedisClient =
+    new RedisClient(redisContainerHost, redisContainerPort)
+
+  private lazy val redisUrl = s"$redisContainerHost:$redisContainerPort"
 
   describe("constructor") {
     it("should parse the db-number from the path of connection uri") {
-      val client = new RedisClient(new URI("redis://localhost:6379/4"))
+      val client = new RedisClient(new URI(s"redis://$redisUrl/4"))
       client.database shouldBe 4
+      client.close()
     }
 
     it("should default to db 0 for connection uri without db-number") {
-      val client = new RedisClient(new URI("redis://localhost:6379"))
+      val client = new RedisClient(new URI(s"redis://$redisUrl"))
       client.database shouldBe 0
+      client.close()
     }
   }
 
   describe("toString") {
     it("should include the db-number") {
-      new RedisClient("localhost", 6379, 1).toString shouldBe "localhost:6379/1"
+      val c = new RedisClient(redisContainerHost, redisContainerPort, 1)
+      c.toString shouldBe s"$redisUrl/1"
+      c.close()
     }
   }
 
   describe("test subscribe") {
-    val r = new RedisClient("localhost", 6379)
+    it("should subscribe") {
+    val r = new RedisClient(redisContainerHost, redisContainerPort)
   
     println(r.get("vvl:qm"))
   
@@ -57,5 +70,41 @@ class RedisClientSpec extends FunSpec
     Thread.sleep(3000)
   
     r.get("vvl:qm")
+    r.close()
+  }}
+
+  describe("test reconnect") {
+    it("should re-init after server restart") {
+      val docker = new Docker(DefaultDockerClientConfig.createDefaultConfigBuilder().build()).client
+
+      val port = {
+        val s = new ServerSocket(0)
+        val p = s.getLocalPort
+        s.close()
+        p
+      }
+
+      val manager = new DockerContainerManager(
+        createContainer(ports = Map(redisPort -> port)) :: Nil, dockerFactory.createExecutor()
+      )
+
+      val key = "test-1"
+      val value = "test-value-1"
+
+      val (cs, _) :: _ = Await.result(manager.initReadyAll(20.seconds), 21.second)
+      val id = Await.result(cs.id, 10.seconds)
+
+      val c = new RedisClient(redisContainerHost, port, 8, timeout = 10.seconds.toMillis.toInt)
+      c.set(key, value)
+      docker.stopContainerCmd(id).exec()
+      try {c.get(key)} catch { case e: Throwable => }
+      docker.startContainerCmd(id).exec()
+      val got = c.get(key)
+      c.close()
+      docker.removeContainerCmd(id).withForce(true).withRemoveVolumes(true).exec()
+      docker.close()
+
+      got shouldBe Some(value)
+    }
   }
 }
